@@ -85,10 +85,10 @@ workflow {
     }
   
   // Debug output
-  ch_jobs.view { job ->
-    "JOB: trait=${job[0]}, tag=${job[1]}, stratum=${job[2]}, " +
-    "cohort=${job[3].getName()}, iv=${job[4]}, counts=${job[5].getName()}"
-  }
+//  ch_jobs.view { job ->
+//    "JOB: trait=${job[0]}, tag=${job[1]}, stratum=${job[2]}, " +
+//    "cohort=${job[3].getName()}, iv=${job[4]}, counts=${job[5].getName()}"
+//  }
   
   // ========================================
   // 4) Run PheWAS
