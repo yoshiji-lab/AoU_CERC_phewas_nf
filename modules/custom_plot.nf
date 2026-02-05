@@ -22,6 +22,8 @@ process CUSTOM_PLOT {
       --fig-height "${params.plot_fig_height}" \
       --axis-text-size "${params.plot_axis_text_size}" \
       --title-text-size "${params.plot_title_text_size}" \
-      --label-size "${params.plot_label_size}"
+      --label-size "${params.plot_label_size}" \
+      --legend-size "${params.plot_legend_size}" \
+      --dpi "${params.plot_dpi}"
     """
 }

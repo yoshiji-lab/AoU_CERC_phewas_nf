@@ -123,10 +123,33 @@ def parse_selected_tags(sel_raw: str) -> Set[str]:
     return tags
 
 
+def load_exclude_ids(exclude_path: Path, person_id_col: str = "person_id") -> Set[str]:
+    """
+    Load IDs to exclude from analysis.
+    File format: FID\tIID (tab-separated)
+    Returns: Set of IID values (matched to person_id)
+    """
+    if not exclude_path.exists() or exclude_path.stat().st_size == 0:
+        return set()
+    
+    exclude_df = pd.read_csv(exclude_path, sep="\t", dtype=str)
+    
+    # Expecting columns: FID, IID
+    if "IID" not in exclude_df.columns:
+        raise SystemExit(
+            f"Exclusion file must have 'IID' column. Found: {exclude_df.columns.tolist()}"
+        )
+    
+    # Extract IID column and convert to set
+    exclude_ids = set(exclude_df["IID"].dropna().astype(str).str.strip())
+    return exclude_ids
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--prs-matrix", required=True, help="PRS matrix TSV (FID/IID + trait cols)")
     ap.add_argument("--cohort-covariates", required=True, help="Cohort covariates TSV (person_id + covariates)")
+    ap.add_argument("--exclude-ids", required=True, help="Exclusion file TSV (FID/IID columns)")
     ap.add_argument("--prs-traits", required=True, help="ALL | comma list | file path (one per line)")
     ap.add_argument("--out-prefix", default="cohort_with_covariates.prs")
     ap.add_argument("--stratify-by-ancestry", default="true")
@@ -151,6 +174,7 @@ def main():
 
     prs_path = Path(args.prs_matrix)
     cov_path = Path(args.cohort_covariates)
+    exclude_path = Path(args.exclude_ids)
 
     rng = np.random.default_rng(int(args.int_seed))
     logp = Path(args.log)
@@ -165,6 +189,7 @@ def main():
     log("=== PREPARE_PRS_COHORTS ===")
     log(f"PRS matrix: {prs_path}")
     log(f"Cohort covariates: {cov_path}")
+    log(f"Exclusion file: {exclude_path}")
     log(f"prs_traits: {args.prs_traits}")
     log(f"stratify_by_ancestry: {args.stratify_by_ancestry}")
     log(f"ancestry_col: {args.ancestry_col}")
@@ -177,6 +202,12 @@ def main():
         raise SystemExit(f"PRS matrix not found: {prs_path}")
     if not cov_path.exists():
         raise SystemExit(f"Cohort covariates not found: {cov_path}")
+    if not exclude_path.exists():
+        raise SystemExit(f"Exclusion file not found: {exclude_path}")
+    
+    # Load exclusion IDs
+    exclude_ids = load_exclude_ids(exclude_path, args.person_id_col)
+    log(f"Loaded {len(exclude_ids)} IDs to exclude from exclusion file")
 
     # --- traits ---
     traits = resolve_traits(prs_path, args.prs_traits)
@@ -197,6 +228,15 @@ def main():
     prs = pd.read_csv(prs_path, sep="\t", usecols=usecols)
     prs = prs.rename(columns={"IID": args.person_id_col})
     prs[args.person_id_col] = prs[args.person_id_col].astype("string")
+    
+    # Apply exclusions EARLY (before INT transform)
+    n_before = prs.shape[0]
+    prs = prs[~prs[args.person_id_col].isin(exclude_ids)]
+    n_after = prs.shape[0]
+    n_excluded = n_before - n_after
+    log(f"PRS rows before exclusion: {n_before}")
+    log(f"PRS rows after exclusion: {n_after}")
+    log(f"PRS rows excluded: {n_excluded}")
 
     # --- INT each trait and build manifest ---
     manifest_rows = []
@@ -300,4 +340,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

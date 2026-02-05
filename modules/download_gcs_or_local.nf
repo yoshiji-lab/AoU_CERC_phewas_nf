@@ -20,4 +20,3 @@ process DOWNLOAD_GCS_OR_LOCAL {
     fi
     """
 }
-

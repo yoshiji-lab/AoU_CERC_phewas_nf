@@ -1,13 +1,12 @@
 process FILTER_COUNTS_TO_COHORT {
-  tag "filter_counts"
+  tag "${stratum}"
 
   input:
-    path counts_tsv
-    path cohort_tsv
+    tuple val(stratum), path(cohort_tsv), path(counts_tsv)
 
   output:
-    path "aou_phecode_counts.filtered.tsv", emit: file
-    path "filter_counts.log", optional: true, emit: log
+    tuple val(stratum), path(cohort_tsv), path("counts.${stratum}.filtered.tsv"), emit: cohort_counts
+    path "filter_counts.${stratum}.log", optional: true, emit: log
 
   script:
     """
@@ -16,9 +15,9 @@ process FILTER_COUNTS_TO_COHORT {
     python3 ${projectDir}/bin/filter_counts_to_cohort.py \
       --counts "${counts_tsv}" \
       --cohort "${cohort_tsv}" \
-      --out "aou_phecode_counts.filtered.tsv" \
+      --out "counts.${stratum}.filtered.tsv" \
       --counts-person-id-col "person_id" \
       --cohort-person-id-col "${params.person_id_col}" \
-      --log "filter_counts.log"
+      --log "filter_counts.${stratum}.log"
     """
 }
